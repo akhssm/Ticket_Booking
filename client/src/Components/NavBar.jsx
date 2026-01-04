@@ -28,11 +28,11 @@ const NavBar = () => {
           onClick={() => setIsOpen(false)}
         />
 
-        <Link onClick={() => {scrollTo(0, 0); setIsOpen(false)}} to="/">Home</Link>
-        <Link onClick={() => {scrollTo(0, 0); setIsOpen(false)}} to="/movies">Movies</Link>
-        <Link onClick={() => {scrollTo(0, 0); setIsOpen(false)}} to="/">Theaters</Link>
-        <Link onClick={() => {scrollTo(0, 0); setIsOpen(false)}} to="/">Releases</Link>
-        <Link onClick={() => {scrollTo(0, 0); setIsOpen(false)}} to="/favourites">Favourites</Link>
+        <Link onClick={() => { scrollTo(0, 0); setIsOpen(false) }} to="/">Home</Link>
+        <Link onClick={() => { scrollTo(0, 0); setIsOpen(false) }} to="/movies">Movies</Link>
+        <Link onClick={() => { scrollTo(0, 0); setIsOpen(false) }} to="/">Theaters</Link>
+        <Link onClick={() => { scrollTo(0, 0); setIsOpen(false) }} to="/">Releases</Link>
+        <Link onClick={() => { scrollTo(0, 0); setIsOpen(false) }} to="/favorites">Favorites</Link>
       </div>
 
       <div className="flex items-center gap-8">
@@ -40,11 +40,7 @@ const NavBar = () => {
 
         <SignedOut>
           <SignInButton mode="modal">
-            <button
-              className="px-4 py-1 sm:px-7 sm:py-2
-              bg-primary hover:bg-primary-dull transition
-              rounded-full font-medium cursor-pointer"
-            >
+            <button className="px-4 py-1 sm:px-7 sm:py-2 bg-primary rounded-full">
               Login
             </button>
           </SignInButton>
