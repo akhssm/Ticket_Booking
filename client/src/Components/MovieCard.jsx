@@ -24,8 +24,8 @@ const MovieCard = ({ movie }) => {
       </p>
 
       <p className="text-sm text-gray-400 mt-2">
-        {movie.release_date && new Date(movie.release_date).getFullYear()} ·{" "}
-        {movie.genres?.slice(0, 2).map(genre => genre.name).join(" | ")} ·{" "}
+        {movie.release_date && new Date(movie.release_date).getFullYear()} •{" "}
+        {movie.genres?.slice(0, 2).map(genre => genre.name).join(" | ")} •{" "}
         {timeFormat(movie.runtime)}
       </p>
 
