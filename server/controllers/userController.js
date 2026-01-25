@@ -21,31 +21,37 @@ export const getUserBookings = async (req, res) => {
 
 // API Controller Function to Update Favorite Movie in Clerk User Matadata
 export const updateFavourite = async (req, res) => {
-    try {
-        const { movieId } = req.body;
-        const userId = req.auth().userId;
+  try {
+    const { movieId } = req.body;
+    const userId = req.auth().userId;
 
-        const user = await clerkClient.users.getUser(userId)
+    // Get user from Clerk
+    const user = await clerkClient.users.getUser(userId);
 
-        if(!user.privateMetadata.favourites){
-            user.privateMetadata.favourites = []
-        }
-
-        if(!user.privateMetadata.favourites.includes(movieId)){
-            user.privateMetadata.favourites.push(movieId)
-        } else {
-           user.privateMetadata.favourites = user.privateMetadata.favourites.filter
-           (item !== movieId)
-        }
-
-        await clerkClient.users.updateUserMetadata(userId, {privateMetadata: user.privateMetadata})
-
-        res.json({success: true, message: "Favourite movies updated."})
-    } catch (error) {
-        console.error(error.message);
-        res.json({ success: false, message: error.message })
+    // Ensure favourites array exists
+    if (!user.privateMetadata.favourites) {
+      user.privateMetadata.favourites = [];
     }
-}
+
+    // Add or remove movieId from favourites
+    if (!user.privateMetadata.favourites.includes(movieId)) {
+      user.privateMetadata.favourites.push(movieId);
+    } else {
+      user.privateMetadata.favourites = user.privateMetadata.favourites.filter(
+        item => item !== movieId
+      );
+    }
+
+    // Update user metadata in Clerk
+    await clerkClient.users.updateUserMetadata(userId, { privateMetadata: user.privateMetadata });
+
+    res.json({ success: true, message: "Favourite movies updated." });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
 
 export const getFavourites = async (req, res) => {
     try {
