@@ -38,16 +38,16 @@ const SeatLayout = () => {
   }, [id])
 
   const handleSeatClick = (seatId) => {
-    if (!selectedTime || selectedSeats.length === 0) {
-      return toast("Please select a time and seats")
+    if (!selectedTime) {
+      return toast.error("Please select a time and seats")
     }
 
     if (!selectedSeats.includes(seatId) && selectedSeats.length >= 5) {
-      return toast("You can only select 5 seats")
+      return toast.error("You can only select 5 seats")
     }
 
     if(occupiedSeats.includes(seatId)){
-      return toast('This seat is already booked')
+      return toast.error('This seat is already booked')
     }
 
     setSelectedSeats(prev =>
@@ -94,26 +94,41 @@ const SeatLayout = () => {
     }
   }
 
-  const bookTickets = async () => {
-    try {
-      if(!user) return toast.error('Please login to proceed')
-
-        if(!selectedTime || selectedSeats.length === 0) return toast.error('Please select a time and seats')
-
-          const { data } = axios.post('/api/booking/create', {showId:
-          selectedTime.showId, selectedSeats}, {headers: { Authorization: `Bearer ${await getToken()}`}})
-
-          if(data.success){
-            toast.success(data.message)
-            navigate('my-bookings')
-          }else{
-            toast.error(data.message)
-          }
-
-    } catch (error) {
-      toast.error(error.message)
+const bookTickets = async () => {
+  try {
+    if (!user) {
+      return toast.error('Please login to proceed')
     }
+    
+    if (!selectedTime || selectedSeats.length === 0) {
+      return toast.error('Please select a time and seats')
+    }
+    
+    const { data } = await axios.post(
+      '/api/booking/create',
+      {
+        showId: selectedTime.showId,
+        selectedSeats,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${await getToken()}`,
+        },
+      }
+    )
+    
+    if (data.success) {
+      toast.success(data.message)
+      navigate('/my-bookings')
+    } else {
+      toast.error(data.message)
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error(error.response?.data?.message || error.message)
   }
+}
+
 
   useEffect(() => {
     if(selectedTime){
