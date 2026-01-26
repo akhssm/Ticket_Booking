@@ -17,15 +17,7 @@ const MovieDetails = () => {
   const [show, setShow] = useState(null)
   const [isFavorite, setIsFavorite] = useState(false)
 
-  const {
-    shows,
-    axios,
-    getToken,
-    user,
-    fetchFavouriteMovies,
-    favouriteMovies,
-    image_base_url
-  } = useAppContext()
+  const {shows, axios, getToken, user, fetchFavouriteMovies, favouriteMovies, image_base_url} = useAppContext()
 
   const getShow = async () => {
     try {

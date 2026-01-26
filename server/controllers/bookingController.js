@@ -47,7 +47,8 @@ export const createBooking = async (req, res) => {
             showData.occupiedSeats[seat] = userId;
         })
 
-        showData.markModified('occupiedSeates');
+        showData.markModified('occupiedSeats');
+        await showData.save()
 
         await showData.save();
 
@@ -66,6 +67,10 @@ export const getOccupiedSeats = async (req, res) => {
         
         const {showId} = req.params;
         const showData = await Show.findById(showId)
+
+        if(!showData){
+            return res.json({success: false, message: "Show not found"})
+        }
 
         const occupiedSeats = Object.keys(showData.occupiedSeats)
         res.json({success: true, occupiedSeats})

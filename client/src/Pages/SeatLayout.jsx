@@ -6,6 +6,7 @@ import { ArrowRightIcon, ClockIcon } from 'lucide-react'
 import isoTimeFormat from '../Lib/isoTimeFormat'
 import BlurCircle from '../Components/BlurCircle'
 import toast from 'react-hot-toast'
+import { useAppContext } from '../context/AppContext'
 
 const SeatLayout = () => {
 
@@ -15,16 +16,20 @@ const SeatLayout = () => {
   const [selectedSeats, setSelectedSeats] = useState([])
   const [selectedTime, setSelectedTime] = useState(null)
   const [show, setShow] = useState(null)
+  const [occupiedSeats, setOccupiedSeats] = useState([])
 
   const navigate = useNavigate()
 
-  const getShow = () => {
-    const show = dummyShowsData.find(show => show._id === id)
-    if (show) {
-      setShow({
-        movie: show,
-        dateTime: dummyDateTimeData
-      })
+  const {axios, getToken, user} = useAppContext();
+
+  const getShow = async () => {
+    try {
+      const{ data } = await axios.get(`/api/show/${id}`)
+      if(data.success){
+        setShow(data)
+      }
+    } catch (error) {
+      console.log(error)
     }
   }
 
@@ -33,12 +38,16 @@ const SeatLayout = () => {
   }, [id])
 
   const handleSeatClick = (seatId) => {
-    if (!selectedTime) {
-      return toast("Please select time first")
+    if (!selectedTime || selectedSeats.length === 0) {
+      return toast("Please select a time and seats")
     }
 
     if (!selectedSeats.includes(seatId) && selectedSeats.length >= 5) {
       return toast("You can only select 5 seats")
+    }
+
+    if(occupiedSeats.includes(seatId)){
+      return toast('This seat is already booked')
     }
 
     setSelectedSeats(prev =>
@@ -59,16 +68,11 @@ const SeatLayout = () => {
           const isSelected = selectedSeats.includes(seatId)
 
           return (
-            <button
-              key={seatId}
-              onClick={() => handleSeatClick(seatId)}
+            <button key={seatId} onClick={() => handleSeatClick(seatId)}
               className={`w-7 h-7 rounded-sm border text-xs transition
-                ${
-                  isSelected
-                    ? 'bg-primary text-white border-primary'
-                    : 'border-gray-500 hover:bg-primary/30'
-                }`}
-            >
+                ${isSelected ? 'bg-primary text-white border-primary'
+                    : 'border-gray-500 hover:bg-primary/30'}
+                    ${occupiedSeats.includes(seatId) && "opacity-50"}`} >
               {i + 1}
             </button>
           )
@@ -76,6 +80,46 @@ const SeatLayout = () => {
       </div>
     )
   }
+
+  const getOccupiedSeats = async () => {
+    try {
+      const { data } = await axios.get(`/api/booking/seats/${selectedTime.showId}`)
+      if(data.success) {
+        setOccupiedSeats(data.occupiedSeats)
+      }else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const bookTickets = async () => {
+    try {
+      if(!user) return toast.error('Please login to proceed')
+
+        if(!selectedTime || selectedSeats.length === 0) return toast.error('Please select a time and seats')
+
+          const { data } = axios.post('/api/booking/create', {showId:
+          selectedTime.showId, selectedSeats}, {headers: { Authorization: `Bearer ${await getToken()}`}})
+
+          if(data.success){
+            toast.success(data.message)
+            navigate('my-bookings')
+          }else{
+            toast.error(data.message)
+          }
+
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  useEffect(() => {
+    if(selectedTime){
+      getOccupiedSeats()
+    }
+  },[selectedTime])
 
   if (!show) return <Loading />
   return (
@@ -120,7 +164,7 @@ const SeatLayout = () => {
           ))}
         </div>
 
-        <button onClick={()=> navigate('/my-bookings')} className='flex items-center gap-1 mt-20 px-10 py-3 text-sm
+        <button onClick={bookTickets} className='flex items-center gap-1 mt-20 px-10 py-3 text-sm
         bg-primary hover:bg-primary-dull transition rounded-full font-medium
         cursor-pointer active:scale-95'>
           Proceed To Checkout
