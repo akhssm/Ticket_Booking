@@ -104,14 +104,18 @@ export const getShow = async (req, res) =>{
     try {
         const {movieId} = req.params;
         // get all upcoming shows for the movie
-        const shows = await Show.find({movie: movieId,showDateTime: { $gte: new
-        Date() }})
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const shows = await Show.find({
+            movie: movieId,
+            showDateTime: { $gte: today }})
 
         const movie = await Movie.findById(movieId);
         const dateTime = {};
 
         shows.forEach((show) => {
-            const date = show.showDateTime.toISOString().split("T")[0];
+            const date = new Date(show.showDateTime).toISOString().split("T")[0];
             if(!dateTime[date]){
                 dateTime[date] = []
             }
