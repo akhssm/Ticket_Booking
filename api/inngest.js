@@ -3,7 +3,7 @@ import { inngest, functions } from "../server/inngest/index.js";
 
 export const config = {
   api: {
-    bodyParser: false, 
+    bodyParser: false,
   },
 };
 
