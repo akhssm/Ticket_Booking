@@ -17,12 +17,12 @@ const port = 3000;
 await connectDB()
 
 // Stripe Webhook Route
-app.use('/api/stripe', express.raw({ type: 'application/json' }), stripeWebhooks)
+app.post("/api/stripe", express.raw({ type: "application/json" }), stripeWebhooks);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(clerkMiddleware())
+app.use(clerkMiddleware());
 
 // API Routes
 app.get('/', (req, res) => res.send('server is Live!'));
