@@ -2,6 +2,8 @@ import { Inngest } from "inngest";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js";
+import connectDB from "../configs/db.js";
+
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "movie_ticket_booking" });
@@ -11,6 +13,7 @@ const syncUserCreation = inngest.createFunction(
   { id: "sync-user-from-clerk" },
   { event: "clerk/user.created" },
   async ({ event }) => {
+    await connectDB();
     const { id, first_name, last_name, email_addresses, image_url,} = event.data;
 
     // Safety check
@@ -40,6 +43,7 @@ const syncUserDeletion = inngest.createFunction(
   { id: "delete-user-with-clerk" },
   { event: "clerk/user.deleted" },
   async ({ event }) => {
+    await connectDB();
     const { id } = event.data;
 
     await User.findByIdAndDelete(id);
@@ -53,6 +57,7 @@ const syncUserUpdation = inngest.createFunction(
   { id: "update-user-with-clerk" },
   { event: "clerk/user.updated" },
   async ({ event }) => {
+    await connectDB();
     const {
       id,
       first_name,
@@ -82,6 +87,7 @@ const releaseSeatsAndDeleteBooking = inngest.createFunction(
   { id: "release-seats-delete-booking" },
   { event: "app/checkpayment" },
   async ({ event, step }) => {
+    await connectDB();
     const tenMinutesLater = new Date(Date.now() + 10 * 60 * 1000);
 
     await step.sleepUntil("wait-for-10-minutes", tenMinutesLater);
