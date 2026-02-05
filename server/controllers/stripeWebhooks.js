@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import Booking from "../models/Booking.js";
+import Show from "../models/Show.js"; // ✅ ADD THIS
 
 export const stripeWebhooks = async (req, res) => {
   const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -8,7 +9,6 @@ export const stripeWebhooks = async (req, res) => {
   let event;
 
   try {
-    // Stripe requires RAW body
     event = stripeInstance.webhooks.constructEvent(
       req.body,
       sig,
@@ -22,6 +22,7 @@ export const stripeWebhooks = async (req, res) => {
   try {
     switch (event.type) {
 
+      // ✅ PAYMENT SUCCESS
       case "checkout.session.completed": {
         const session = event.data.object;
         const bookingId = session.metadata?.bookingId;
@@ -29,32 +30,10 @@ export const stripeWebhooks = async (req, res) => {
         if (bookingId) {
           await Booking.findByIdAndUpdate(bookingId, {
             isPaid: true,
+            status: "PAID",
             paymentLink: ""
           });
-          console.log(`✅ Booking ${bookingId} paid (checkout.session.completed)`);
         }
-        break;
-      }
-
-      case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object;
-
-        // 🔥 FIX: bookingId comes from payment_details.order_reference
-        const bookingId =
-          paymentIntent.metadata?.bookingId ||
-          paymentIntent.payment_details?.order_reference;
-
-        if (!bookingId) {
-          console.log("⚠️ bookingId not found in payment_intent");
-          break;
-        }
-
-        await Booking.findByIdAndUpdate(bookingId, {
-          isPaid: true,
-          paymentLink: ""
-        });
-
-        console.log(`✅ Booking ${bookingId} paid (payment_intent.succeeded)`);
         break;
       }
 

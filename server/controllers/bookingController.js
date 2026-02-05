@@ -5,21 +5,23 @@ import Stripe from 'stripe';
 
 
 // Function to check availability of selected seats for a movie
-const checkSeatsAvailability = async (showId, selectedSeats) =>{
-    try {
-        const showData = await Show.findById(showId)
-        if(!showData) return false;
+const checkSeatsAvailability = async (showId, selectedSeats, userId) => {
+  try {
+    const showData = await Show.findById(showId);
+    if (!showData) return false;
 
-        const occupiedSeats = showData.occupiedSeats;
+    const occupiedSeats = showData.occupiedSeats || {};
 
-        const isAnySeatTaken = selectedSeats.some(seat => occupiedSeats[seat]);
+    const isAnySeatTaken = selectedSeats.some(
+      seat => occupiedSeats[seat] && occupiedSeats[seat].toString() !== userId.toString()
+    );
 
-        return !isAnySeatTaken;
-    } catch (error) {
-        console.log(error.message);
-        return false;
-    }
-}
+    return !isAnySeatTaken;
+  } catch (error) {
+    console.log(error.message);
+    return false;
+  }
+};
 
 export const createBooking = async (req, res) => {
     try {
@@ -28,7 +30,7 @@ export const createBooking = async (req, res) => {
         const {origin} = req.headers;
 
         // Check if the seat is available for the selected show
-        const isAvailable = await checkSeatsAvailability(showId, selectedSeats)
+        const isAvailable = await checkSeatsAvailability(showId, selectedSeats, userId)
 
         if(!isAvailable){
             return res.json({success: false, message: "Selected Seats are not available."})
@@ -42,10 +44,15 @@ export const createBooking = async (req, res) => {
             user: userId,
             show: showId,
             amount: showData.showPrice * selectedSeats.length,
-            bookedSeats: selectedSeats
+            bookedSeats: selectedSeats,
+            status: "PENDING"
         })
 
-        selectedSeats.map((seat) => {
+        if (!showData.occupiedSeats) {
+            showData.occupiedSeats = {};
+        }
+
+        selectedSeats.forEach((seat) => {
             showData.occupiedSeats[seat] = userId;
         })
 
@@ -70,8 +77,10 @@ export const createBooking = async (req, res) => {
         const session = await stripeInstance.checkout.sessions.create({
             success_url: `${origin}/loading/my-bookings`,
             cancel_url: `${origin}/my-bookings`,
-            line_items: line_items,
+            line_items,
             mode: 'payment',
+            metadata: { bookingId: booking._id.toString() },
+
             payment_intent_data: {
                 metadata: { bookingId: booking._id.toString() },
             },
@@ -83,7 +92,7 @@ export const createBooking = async (req, res) => {
 
         // Run Inngest Schedular Function to check payment status after 10 minutes
         await inngest.send({
-            name: "app/checkpayment",
+            name: "app.booking.checkpayment",
             data: {
                 bookingId: booking._id.toString(),
             },
@@ -107,7 +116,7 @@ export const getOccupiedSeats = async (req, res) => {
             return res.json({success: false, message: "Show not found"})
         }
 
-        const occupiedSeats = Object.keys(showData.occupiedSeats)
+        const occupiedSeats = Object.keys(showData.occupiedSeats || {})
         res.json({success: true, occupiedSeats})
 
     } catch (error) {

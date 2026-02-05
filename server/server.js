@@ -24,7 +24,7 @@ app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
 
-app.use("/api/inngest", serve({client: inngest, functions,}));
+app.use("/api/inngest", serve({ client: inngest, functions }));
 
 // API Routes
 app.get('/', (req, res) => res.send('server is Live!'));
