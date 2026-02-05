@@ -12,9 +12,7 @@ import { serve } from "inngest/express";
 import { inngest, functions } from "./inngest/index.js";
 
 const app = express();
-const port = 3000;
-
-await connectDB();
+const port = process.env.PORT || 3000;
 
 // ✅ Stripe Webhook (RAW BODY)
 app.post(
@@ -23,7 +21,7 @@ app.post(
   stripeWebhooks
 );
 
-// ✅ Inngest MUST come BEFORE express.json()
+// ✅ Inngest endpoint
 app.use(
   "/api/inngest",
   serve({ client: inngest, functions })
@@ -41,6 +39,13 @@ app.use('/api/booking', bookingRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/user', userRouter);
 
-app.listen(port, () =>
-  console.log(`Server listening at http://localhost:${port}`)
-);
+// Connect DB before starting server
+connectDB()
+  .then(() => {
+    app.listen(port, () =>
+      console.log(`Server listening at http://localhost:${port}`)
+    );
+  })
+  .catch((err) => {
+    console.error("DB connection failed:", err);
+  });
