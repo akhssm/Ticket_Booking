@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "main": "server.js",
   "type": "module",
-  "scripts": {
-    "server": "nodemon server.js",
-    "start": "node server.js"
-  },
+ "scripts": {
+  "server": "nodemon server.js",
+  "start": "node server.js",
+  "inngest": "npx inngest dev --url http://localhost:3000/api/inngest"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -18,12 +19,12 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "inngest": "^3.49.0",
     "mongoose": "^9.1.2",
     "stripe": "^20.2.0",
     "svix": "^1.84.1"
   },
   "devDependencies": {
+    "inngest": "^3.50.0",
     "nodemon": "^3.1.11"
   }
 }

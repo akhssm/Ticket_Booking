@@ -16,17 +16,25 @@ const port = 3000;
 
 await connectDB();
 
-// Stripe Webhook Route (must be raw)
-app.post("/api/stripe", express.raw({ type: "application/json" }), stripeWebhooks);
+// ✅ Stripe Webhook (RAW BODY)
+app.post(
+  "/api/stripe",
+  express.raw({ type: "application/json" }),
+  stripeWebhooks
+);
+
+// ✅ Inngest MUST come BEFORE express.json()
+app.use(
+  "/api/inngest",
+  serve({ client: inngest, functions })
+);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
 
-app.use("/api/inngest", serve({ client: inngest, functions }));
-
-// API Routes
+// Routes
 app.get('/', (req, res) => res.send('server is Live!'));
 app.use('/api/show', showRouter);
 app.use('/api/booking', bookingRouter);
