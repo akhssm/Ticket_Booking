@@ -88,28 +88,57 @@ const releaseSeatsAndDeleteBooking = inngest.createFunction(
   { id: "release-seats-delete-booking" },
   { event: "app/checkpayment" },
   async ({ event, step }) => {
-    await connectDB();
-    const tenMinutesLater = new Date(Date.now() + 10 * 60 * 1000);
-    await step.sleepUntil("wait-for-10-minutes", tenMinutesLater);
+    try {
+      console.log("🚀 releaseSeatsAndDeleteBooking started for bookingId:", event.data.bookingId);
 
-    await step.run("check-payment-status", async () => {
-      const bookingId = event.data.bookingId;
-      const booking = await Booking.findById(bookingId);
+      // Ensure DB connection
+      await connectDB();
 
-      // Booking already paid or already removed
-      if (!booking || booking.isPaid) return;
+      // Wait for 10 minutes
+      const tenMinutesLater = new Date(Date.now() + 10 * 60 * 1000);
+      console.log("⏱ Sleeping until:", tenMinutesLater.toISOString());
+      await step.sleepUntil("wait-for-10-minutes", tenMinutesLater);
 
-      const show = await Show.findById(booking.show);
-      if (!show) return;
+      // Check payment status
+      await step.run("check-payment-status", async () => {
+        const bookingId = event.data.bookingId;
+        const booking = await Booking.findById(bookingId);
 
-      booking.bookedSeats.forEach((seat) => {
-        delete show.occupiedSeats[seat];
+        if (!booking) {
+          console.log(`⚠️ Booking ${bookingId} not found. Maybe already deleted.`);
+          return;
+        }
+
+        if (booking.isPaid) {
+          console.log(`✅ Booking ${bookingId} already paid. No action needed.`);
+          return;
+        }
+
+        const show = await Show.findById(booking.show);
+        if (!show) {
+          console.log(`⚠️ Show ${booking.show} not found for booking ${bookingId}`);
+          return;
+        }
+
+        // Release booked seats
+        booking.bookedSeats.forEach((seat) => {
+          if (show.occupiedSeats[seat]) delete show.occupiedSeats[seat];
+        });
+
+        show.markModified("occupiedSeats");
+        await show.save();
+        console.log(`🪑 Released seats for booking ${bookingId}`);
+
+        // Delete the unpaid booking
+        await Booking.findByIdAndDelete(booking._id);
+        console.log(`🗑 Booking ${bookingId} deleted`);
       });
 
-      show.markModified("occupiedSeats");
-      await show.save();
-      await Booking.findByIdAndDelete(booking._id);
-    });
+      console.log("✅ releaseSeatsAndDeleteBooking finished successfully");
+    } catch (err) {
+      console.error("❌ Error in releaseSeatsAndDeleteBooking:", err);
+      throw err; // Ensures Inngest logs the error
+    }
   }
 );
 
