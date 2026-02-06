@@ -14,39 +14,29 @@ export const stripeWebhooks = async (req, res) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("❌ Webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    console.error("❌ Stripe signature failed:", err.message);
+    return res.status(400).send();
   }
 
   try {
-    const markBookingPaid = async (bookingId) => {
-      if (!bookingId) return;
-
-      // ✅ idempotent update (VERY IMPORTANT)
-      const booking = await Booking.findOneAndUpdate(
-        { _id: bookingId, isPaid: false },
-        { isPaid: true, paymentLink: "" },
-        { new: true }
-      );
-
-      if (booking) {
-        console.log("✅ Booking marked paid:", bookingId);
-      }
-    };
-
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object;
-      await markBookingPaid(session.metadata?.bookingId);
-    }
-
     if (event.type === "payment_intent.succeeded") {
       const intent = event.data.object;
-      await markBookingPaid(intent.metadata?.bookingId);
+      const bookingId = intent.metadata?.bookingId;
+
+      if (!bookingId) return res.status(200).send();
+
+      await Booking.findOneAndUpdate(
+        { _id: bookingId, isPaid: false },
+        { isPaid: true, paymentLink: "" }
+      );
+
+      console.log("✅ Booking marked paid:", bookingId);
     }
 
-    res.json({ received: true });
+    // Stripe expects 200 no matter what
+    res.status(200).send();
   } catch (err) {
-    console.error("❌ Webhook processing error:", err);
-    res.status(500).send("Internal Server Error");
+    console.error("❌ Webhook DB error:", err);
+    res.status(200).send(); // important: still return 200
   }
 };
