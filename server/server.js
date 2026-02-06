@@ -14,29 +14,27 @@ import { stripeWebhooks } from './controllers/stripeWebhooks.js';
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Connect to Database
 await connectDB();
 
-// 1. STRIPE WEBHOOK ROUTE (Must be BEFORE express.json)
-// We use express.raw to ensure the body remains a Buffer for signature verification
+// 1. STRIPE WEBHOOK - MUST BE DEFINED BEFORE express.json()
+// This ensures the raw body is preserved for Stripe verification
 app.post(
-  "/api/stripe", 
-  express.raw({ type: "application/json" }), 
-  stripeWebhooks
+    "/api/stripe", 
+    express.raw({ type: "application/json" }), 
+    stripeWebhooks
 );
 
-// 2. GLOBAL MIDDLEWARES (Applied after the webhook route)
+// 2. GLOBAL MIDDLEWARE
 app.use(cors());
-app.use(express.json()); // This will now only parse JSON for other routes
+app.use(express.json()); // This will now ignore the /api/stripe route
 app.use(clerkMiddleware());
 
 // 3. API ROUTES
 app.get('/', (req, res) => res.send('Server is Live!'));
-
 app.use('/api/inngest', serve({ client: inngest, functions }));
 app.use('/api/show', showRouter);
 app.use('/api/booking', bookingRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/user', userRouter);
 
-app.listen(port, () => console.log(`Server listening at http://localhost:${port}`));
+app.listen(port, () => console.log(`Server listening on port ${port}`));
