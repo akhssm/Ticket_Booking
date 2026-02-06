@@ -75,7 +75,6 @@ export const createBooking = async (req, res) => {
             metadata: {
               bookingId: booking._id.toString(),
             },
-            
             payment_intent_data: {
                 metadata: { bookingId: booking._id.toString() },
             },
