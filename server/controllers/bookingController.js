@@ -1,4 +1,3 @@
-import { inngest } from "../inngest/index.js";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js"
 import Stripe from 'stripe';
@@ -70,8 +69,13 @@ export const createBooking = async (req, res) => {
         const session = await stripeInstance.checkout.sessions.create({
             success_url: `${origin}/loading/my-bookings`,
             cancel_url: `${origin}/my-bookings`,
-            line_items: line_items,
+            line_items,
             mode: 'payment',
+            
+            metadata: {
+              bookingId: booking._id.toString(),
+            },
+            
             payment_intent_data: {
                 metadata: { bookingId: booking._id.toString() },
             },
@@ -81,13 +85,6 @@ export const createBooking = async (req, res) => {
         booking.paymentLink = session.url
         await booking.save()
 
-        // Run Inngest Schedular Function to check payment status after 10 minutes
-        await inngest.send({
-            name: "app/checkpayment",
-            data: {
-                bookingId: booking._id.toString(),
-            },
-        });
 
         res.json({success: true, url: session.url})
 
