@@ -22,7 +22,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 await connectDB();
 
 /* =====================================================
-   🚨 STRIPE WEBHOOK — MUST BE FIRST & SERVER-ONLY
+   🚨 STRIPE WEBHOOK — MUST BE FIRST
 ===================================================== */
 app.post(
   "/api/stripe",
@@ -35,7 +35,7 @@ app.post(
     const sig = req.headers["stripe-signature"];
     let event;
 
-    // 1️⃣ Verify signature
+    // ✅ Verify signature
     try {
       event = stripe.webhooks.constructEvent(
         req.body,
@@ -43,22 +43,24 @@ app.post(
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      console.error("❌ Signature verification failed:", err.message);
+      console.error("❌ Stripe signature verification failed:", err.message);
       return res.status(400).send("Invalid signature");
     }
 
-    // 2️⃣ Process event (NO throw, NO early response)
     try {
-      if (event.type === "payment_intent.succeeded") {
-        const paymentIntent = event.data.object;
-        const bookingId = paymentIntent.metadata?.bookingId;
+      // ✅ RECOMMENDED EVENT FOR CHECKOUT
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object;
+        const bookingId = session.metadata?.bookingId;
 
         if (mongoose.Types.ObjectId.isValid(bookingId)) {
           const booking = await Booking.findById(bookingId);
 
           if (booking && !booking.isPaid) {
             booking.isPaid = true;
+            booking.paymentLink = ""; // 🔥 CRITICAL FIX
             await booking.save();
+
             console.log(`✅ Booking ${bookingId} marked as PAID`);
           }
         }
@@ -67,13 +69,13 @@ app.post(
       console.error("❌ Webhook processing error:", err);
     }
 
-    // 3️⃣ ACK STRIPE LAST (CRITICAL FOR VERCEL)
+    // ✅ ACK STRIPE LAST
     return res.status(200).json({ received: true });
   }
 );
 
 /* =====================================================
-   🌍 GLOBAL MIDDLEWARE (AFTER webhook)
+   🌍 GLOBAL MIDDLEWARE (AFTER WEBHOOK)
 ===================================================== */
 app.use(cors());
 app.use(express.json());
