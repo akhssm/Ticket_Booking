@@ -1,57 +1,70 @@
+import express from "express";
 import Stripe from "stripe";
+import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 
-export const stripeWebhooks = async (req, res) => {
-  const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
-  const sig = req.headers["stripe-signature"];
+const router = express.Router();
 
-  let event;
+router.post(
+  "/",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    // 🔍 DEBUG LOGS (very important)
+    console.log("STRIPE_SECRET_KEY exists:", !!process.env.STRIPE_SECRET_KEY);
+    console.log("STRIPE_WEBHOOK_SECRET exists:", !!process.env.STRIPE_WEBHOOK_SECRET);
+    console.log("Body is buffer:", Buffer.isBuffer(req.body));
 
-  try {
-    // Construct the event using the raw body for verification
-    event = stripeInstance.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (error) {
-    console.error("❌ Webhook signature verification failed:", error.message);
-    return res.status(400).send(`Webhook error: ${error.message}`);
-  }
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const sig = req.headers["stripe-signature"];
 
-  try {
-    let bookingId;
+    let event;
 
-    // Extract bookingId from metadata provided during checkout creation
-    if (event.type === "checkout.session.completed") {
-      bookingId = event.data.object.metadata?.bookingId;
-    } else if (event.type === "payment_intent.succeeded") {
-      bookingId = event.data.object.metadata?.bookingId;
-    }
-
-    if (bookingId) {
-      /**
-       * We update isPaid to true. 
-       * In your frontend: {!item.isPaid && ...} will now hide the button.
-       */
-      const updatedBooking = await Booking.findByIdAndUpdate(
-        bookingId,
-        { isPaid: true }, 
-        { new: true }
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
       );
-
-      if (updatedBooking) {
-        console.log(`✅ Success: Booking ${bookingId} is now marked as Paid.`);
-      } else {
-        console.log(`⚠️ Warning: Booking ${bookingId} not found in database.`);
-      }
+    } catch (err) {
+      console.error("❌ Stripe signature verification failed:", err.message);
+      return res.status(400).send("Invalid signature");
     }
 
-    // Acknowledge receipt of the event
-    res.status(200).json({ received: true });
+    // ✅ ACK Stripe immediately (prevents retries)
+    res.sendStatus(200);
 
-  } catch (err) {
-    console.error("❌ Webhook Database Error:", err.message);
-    res.status(500).send("Internal Server Error");
+    // 🔁 Process only successful payments
+    if (event.type !== "payment_intent.succeeded") return;
+
+    try {
+      const paymentIntent = event.data.object;
+      const bookingId = paymentIntent.metadata?.bookingId;
+
+      if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+        console.log("❌ Invalid bookingId:", bookingId);
+        return;
+      }
+
+      const booking = await Booking.findById(bookingId);
+
+      if (!booking) {
+        console.log("❌ Booking not found:", bookingId);
+        return;
+      }
+
+      if (booking.isPaid) {
+        console.log("⚠️ Booking already paid:", bookingId);
+        return;
+      }
+
+      booking.isPaid = true;
+      await booking.save();
+
+      console.log(`✅ Booking ${bookingId} marked as PAID`);
+    } catch (err) {
+      console.error("❌ Webhook async error:", err);
+    }
   }
-};
+);
+
+export default router;
